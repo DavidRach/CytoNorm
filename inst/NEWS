@@ -1,0 +1,5 @@
+CHANGES IN VERSION 2.0.10 (2025/12/16)
+--------------------------------------
+o Added NEWS document
+o Added plotFileScatters function (copied from FlowSOM)
+
