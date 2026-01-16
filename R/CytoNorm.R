@@ -246,7 +246,7 @@ CytoNorm.train <- function(files,
         warning("Reusing FlowSOM result previously saved at ",
     file.path(outputDir, "CytoNorm_FlowSOM.RDS. 
          If this was not intended, one can either specify another outputDir, 
-         make use of the recompute parameter or move the FlowSOM object in the 
+         set recompute parameter to TRUE or move the FlowSOM object in the 
          file manager.\n"))
     }
     
