@@ -125,7 +125,8 @@ plotFileScatters <- function(input,
     ff <- FlowSOM::AggregateFlowFrames(input,
                                        cTotal = maxPoints, 
                                        channels = channels,
-                                       silent = silent)
+                                       silent = silent,
+                                       ...)
     data <- ff@exprs
     file_values <- data[, fileID]
   }
@@ -175,7 +176,7 @@ plotFileScatters <- function(input,
     } else if ("channel" %in% yLabel && length(yLabel) == 1){
       yLabs <- channel
     } else if (all(c("channel", "marker") %in% yLabel) && length(yLabel) == 2){
-      yLabs <- paste0(GetMarkers(ff, channel), " (", channel, ")")
+      yLabs <- paste0(FlowSOM::GetMarkers(ff, channel), " (", channel, ")")
     }
     
     
@@ -248,9 +249,9 @@ plotFileScatters <- function(input,
     png(plotFile,
         width = width, 
         height = height)
-    p <- ggpubr::annotate_figure(ggarrange(plotlist = plots_list,
-                                           common.legend = legend, 
-                                           ncol = ncol, nrow = nrow),
+    p <- ggpubr::annotate_figure(ggpubr::ggarrange(plotlist = plots_list,
+                                                   common.legend = legend, 
+                                                   ncol = ncol, nrow = nrow),
                                  bottom = ggpubr::text_grob("Files"))
     print(p)  
     dev.off()
