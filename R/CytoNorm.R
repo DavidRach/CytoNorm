@@ -52,12 +52,13 @@
 #' FlowSOM::PlotStars(fsom)
 #'
 #' @importFrom dplyr '%>%' filter
-#' @importFrom flowCore read.FCS transformList colnames
+#' @importFrom flowCore read.FCS transformList colnames transform
 #' @importFrom stringr str_match
 #' @importFrom pheatmap pheatmap
 #' @importFrom stats density
 #' @importFrom utils capture.output
 #' @importFrom gridExtra grid.arrange
+#' @importFrom FlowSOM AggregateFlowFrames FlowSOM
 #'
 #' @export
 prepareFlowSOM <- function(files,
@@ -75,10 +76,10 @@ prepareFlowSOM <- function(files,
     if (verbose) message("Aggregating files ... ")
 
     if(!is.null(seed)) set.seed(seed)
-    o <- capture.output( ff <- FlowSOM::AggregateFlowFrames(files, nCells,
+    o <- capture.output( ff <- AggregateFlowFrames(files, nCells,
                                                             channels = colsToUse,
                                                             ...))
-    if(!is.null(transformList)) ff <- flowCore::transform(ff, transformList)
+    if(!is.null(transformList)) ff <- transform(ff, transformList)
 
     FlowSOM.params <- c(FlowSOM.params,
                         list(input = ff,
@@ -87,7 +88,7 @@ prepareFlowSOM <- function(files,
     FlowSOM.params <- FlowSOM.params[unique(names(FlowSOM.params))]
 
     if (verbose) message("Running the FlowSOM algorithm ... ")
-    fsom <- do.call(FlowSOM::FlowSOM, FlowSOM.params)
+    fsom <- do.call(FlowSOM, FlowSOM.params)
 
     fsom
 }
@@ -178,7 +179,9 @@ prepareFlowSOM <- function(files,
 #'                    transformList.reverse = transformList.reverse)
 #'
 #' @importFrom methods is
-#' @importFrom flowCore sampleNames
+#' @importFrom flowCore sampleNames read.FCS transform write.FCS
+#' @importFrom FlowSOM FlowSOMmary NMetaclusters NewData GetMetaclusters
+#' @importFrom grDevices pdf dev.off
 #'
 #' @export
 CytoNorm.train <- function(files,
@@ -238,7 +241,7 @@ CytoNorm.train <- function(files,
         saveRDS(fsom, file.path(outputDir, "CytoNorm_FlowSOM.RDS"))
 
         if (plot) {
-            FlowSOM::FlowSOMmary(fsom,
+            FlowSOMmary(fsom,
                                  plotFile = file.path(outputDir, "CytoNorm_FlowSOM.pdf"))
         }
     } else {
@@ -252,9 +255,9 @@ CytoNorm.train <- function(files,
     
     # Error when goal does not correspond to FlowSOM model
     if ("goal" %in% names(normParams) & is.list(normParams[["goal"]])){
-      if (length(normParams[["goal"]]) != FlowSOM::NMetaclusters(fsom)) {
+      if (length(normParams[["goal"]]) != NMetaclusters(fsom)) {
         stop(paste0(length(normParams[["goal"]]), " clusters in the goal",
-                    " distribution and ", FlowSOM::NMetaclusters(fsom), 
+                    " distribution and ", NMetaclusters(fsom), 
                     " clusters in the FlowSOM model.
   This should be the same."))
       }
@@ -275,20 +278,20 @@ CytoNorm.train <- function(files,
         ff <- files[[i]]
       } else {
         file <- files[i]
-        ff <- flowCore::read.FCS(file, ...)
+        ff <- read.FCS(file, ...)
       }
       if(verbose) message("Splitting ", file)
       if (!is.null(transformList)) {
-        ff <- flowCore::transform(ff,transformList)
+        ff <- transform(ff,transformList)
       }
       # Map the file to the FlowSOM clustering
-      fsom_file <- FlowSOM::NewData(fsom, ff)
+      fsom_file <- NewData(fsom, ff)
       # Get the metacluster label for every cell
-      cellClusterIDs <- FlowSOM::GetMetaclusters(fsom_file) #fsom$metaclustering[GetClusters(fsom_file)]
+      cellClusterIDs <- GetMetaclusters(fsom_file) #fsom$metaclustering[GetClusters(fsom_file)]
       for (cluster in unique(fsom$metaclustering)) {
         if (sum(cellClusterIDs == cluster) > 0) {
           suppressWarnings(
-            flowCore::write.FCS(
+            write.FCS(
               ff[cellClusterIDs == cluster,],
               file=file.path(outputDir,
                              paste0(gsub("[:/]","_",file),
@@ -309,7 +312,7 @@ CytoNorm.train <- function(files,
     for (cluster in unique(fsom$metaclustering)) {
         if(verbose) message("Processing cluster ",cluster)
         if (plot) {
-            grDevices::pdf(file.path(outputDir,
+            pdf(file.path(outputDir,
                                      paste0("CytoNorm_norm_Cluster",
                                             cluster, ".pdf")),
                            height = 3*(2*length(files)+2),
@@ -332,7 +335,7 @@ CytoNorm.train <- function(files,
         clusterRes[[cluster]] <- do.call(normMethod.train,
                                          normParams_tmp)
 
-        if (plot) { grDevices::dev.off() }
+        if (plot) { dev.off() }
     }
 
     if(clean){
@@ -424,7 +427,9 @@ CytoNorm.train <- function(files,
 #'                    verbose = TRUE)
 #'
 #' @importFrom methods is
-#' @importFrom flowCore sampleNames flowSet
+#' @importFrom flowCore sampleNames flowSet read.FCS transform write.FCS
+#' exprs
+#' @importFrom FlowSOM NewData GetMetaclusters
 #'
 #' @export
 CytoNorm.normalize <- function(model,
@@ -474,19 +479,19 @@ CytoNorm.normalize <- function(model,
         ff <- files[[i]]
       } else {
         file <- files[i]
-        ff <- flowCore::read.FCS(file, ...)
+        ff <- read.FCS(file, ...)
       }
       if(verbose) message("Splitting ",file)
       if(!is.null(transformList)){
-        ff <- flowCore::transform(ff, transformList)
+        ff <- transform(ff, transformList)
         # meta[[file]] <- list()
         # meta[[file]][["description_original"]] <- ff@description
         # meta[[file]][["parameters_original"]] <- ff@parameters
       }
 
-      fsom_file <- FlowSOM::NewData(fsom,ff)
+      fsom_file <- NewData(fsom,ff)
 
-      cellClusterIDs[[file]] <- FlowSOM::GetMetaclusters(fsom_file)
+      cellClusterIDs[[file]] <- GetMetaclusters(fsom_file)
 
       for(cluster in unique(fsom$metaclustering)){
         if (sum(cellClusterIDs[[file]] == cluster) > 0) {
@@ -494,7 +499,7 @@ CytoNorm.normalize <- function(model,
                          paste0(gsub("[:/]","_",file),
                                 "_fsom", cluster, ".fcs"))
           suppressWarnings(
-            flowCore::write.FCS(ff[cellClusterIDs[[file]] == cluster],
+            write.FCS(ff[cellClusterIDs[[file]] == cluster],
                                 file = f)
           )
         }
@@ -534,10 +539,10 @@ CytoNorm.normalize <- function(model,
                 ff <- files[[i]]
             } else {
                 file <- files[i]
-                ff <- flowCore::read.FCS(file, ...)
+                ff <- read.FCS(file, ...)
             }
             if(!is.null(transformList)){
-              ff <- flowCore::transform(ff, transformList)
+              ff <- transform(ff, transformList)
             }
             if(verbose) message("Rebuilding ",file)
             for(cluster in unique(fsom$metaclustering)){
@@ -545,12 +550,12 @@ CytoNorm.normalize <- function(model,
                                        paste0("Norm_",gsub("[:/]","_",file),
                                               "_fsom",cluster,".fcs"))
                 if (file.exists(file_name)) {
-                    ff_subset <- flowCore::read.FCS(file_name, ...)
-                    flowCore::exprs(ff)[cellClusterIDs[[file]] == cluster,] <- flowCore::exprs(ff_subset)
+                    ff_subset <- read.FCS(file_name, ...)
+                    exprs(ff)[cellClusterIDs[[file]] == cluster,] <- exprs(ff_subset)
                 }
             }
             if(!is.null(transformList.reverse)){
-                ff <- flowCore::transform(ff, transformList.reverse)
+                ff <- transform(ff, transformList.reverse)
                 # ff@description <- meta[[file]][["description_original"]]
                 # ff@parameters <- meta[[file]][["parameters_original"]]
             }
@@ -603,7 +608,7 @@ CytoNorm.normalize <- function(model,
 
             if(write) {
                 suppressWarnings(
-                    flowCore::write.FCS(
+                    write.FCS(
                         ff,
                         file= file.path(outputDir,paste0(prefix,gsub(".*/","",file)))
                     )

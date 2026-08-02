@@ -21,6 +21,11 @@
 #' @param plot        If TRUE, plots are generated showing all quantiles.
 #'                    Default = FALSE.
 #' @param ...         Additional arguments to pass to read.FCS
+#' 
+#' @importFrom FlowSOM AggregateFlowFrames
+#' @importFrom flowCore exprs transform read.FCS
+#' @importFrom stats quantile density
+#' @importFrom graphics plot abline
 #'
 #' @examples
 #' dir <- system.file("extdata", package = "CytoNorm")
@@ -75,19 +80,19 @@ getQuantiles <- function(files,
 
         # Read the file(s) and transform if necessary
         if (length(ids) > 1) {
-            ff <- FlowSOM::AggregateFlowFrames(files[ids], 1e12,
+            ff <- AggregateFlowFrames(files[ids], 1e12,
                                                keepOrder = TRUE,
                                                channels = channels,
                                                ...)
         } else if(length(ids) == 1) {
-            o <- capture.output(ff <- flowCore::read.FCS(files[ids],...))
+            o <- capture.output(ff <- read.FCS(files[ids],...))
             if (verbose) message(o)
         } else {
             ff <- NULL
         }
 
         if (!is.null(ff) && !is.null(transformList)) {
-            ff <- flowCore::transform(ff, transformList)
+            ff <- transform(ff, transformList)
         }
 
         if (!is.null(ff) & !is.null(selection)){
@@ -97,27 +102,27 @@ getQuantiles <- function(files,
 
         # Compute quantiles for all channels to normalize
         if (!is.null(ff) && flowCore::nrow(ff) > minCells) {
-            quantiles[[label]] <- apply(flowCore::exprs(ff)[, channels, drop = FALSE],
+            quantiles[[label]] <- apply(exprs(ff)[, channels, drop = FALSE],
                                         2,
                                         function(x){
-                                            stats::quantile(x,
+                                            quantile(x,
                                                             quantileValues)
                                         })
 
             if(plot){
                 textPlot(label)
                 for(channel in channels){
-                    dens <- stats::density(flowCore::exprs(ff)[, channel],
+                    dens <- density(exprs(ff)[, channel],
                                            bw = 0.1)
-                    graphics::plot(dens,
+                    plot(dens,
                                    bty = "n", xaxt = "n", yaxt = "n",
                                    xlab = "", ylab = "", main = "",
                                    xlim = c(0,
-                                            max(flowCore::exprs(ff)[, channel],
+                                            max(exprs(ff)[, channel],
                                                 8)))
-                    graphics::abline(v = quantiles[[label]][, channel],
+                    abline(v = quantiles[[label]][, channel],
                                      col = "grey")
-                    graphics::lines(dens, lwd = 2)
+                    lines(dens, lwd = 2)
                 }
             }
         } else {
@@ -175,6 +180,10 @@ getQuantiles <- function(files,
 #' @param plotTitle   Title to use in the plot. Default = "Quantiles".
 #' @param verbose     If TRUE, progress updates are printed. Default = FALSE.
 #' @param ...         Additional arguments to pass to read.FCS
+#' 
+#' @importFrom graphics par layout plot abline lines
+#' @importFrom flowCore getChannelMarker read.FCS
+#' @importFrom stats splinefun
 #'
 #' @return A list containing all the splines and quantile information. This can
 #'         be used as input for the \code{\link{QuantileNorm.normalize}} function.
@@ -280,13 +289,13 @@ QuantileNorm.train <- function(files,
     if(plot){
         xdim = 1 + length(channels)
         ydim = 2 + 2*length(unique(labels))
-        graphics::layout(matrix(1:(xdim*ydim), ncol = xdim, byrow = TRUE))
-        graphics::par(mar=c(1, 1, 0, 0))
+        layout(matrix(1:(xdim*ydim), ncol = xdim, byrow = TRUE))
+        par(mar=c(1, 1, 0, 0))
         textPlot(plotTitle)
-        ff_tmp <- flowCore::read.FCS(files[file.exists(files)][1],...)
+        ff_tmp <- read.FCS(files[file.exists(files)][1],...)
 
         for(channel in channels){
-            marker <- flowCore::getChannelMarker(ff_tmp, channel)[,2]
+            marker <- getChannelMarker(ff_tmp, channel)[,2]
             if(is.na(marker)){
                 textPlot(channel)
             } else {
@@ -359,10 +368,10 @@ QuantileNorm.train <- function(files,
     if(plot){
         textPlot("Goal distribution")
         for(channel in channels){
-            graphics::plot(0, type = "n", xlim = c(0, 8),
+            plot(0, type = "n", xlim = c(0, 8),
                            bty = "n", xaxt = "n", yaxt = "n",
                            xlab = "", ylab = "", main = "")
-            graphics::abline(v = refQuantiles[,channel])
+            abline(v = refQuantiles[,channel])
         }
     }
 
@@ -381,7 +390,7 @@ QuantileNorm.train <- function(files,
                 labelQ <- quantiles[[label]][, channel]
 
                 if(length(unique(labelQ)) > 1){
-                    suppressWarnings(spl <- stats::splinefun(labelQ,
+                    suppressWarnings(spl <- splinefun(labelQ,
                                                              refQ,
                                                              method="monoH.FC"))
                 } else {
@@ -392,12 +401,12 @@ QuantileNorm.train <- function(files,
                 splines[[label]][[channel]] <- spl
 
                 if(plot){
-                    graphics::plot(labelQ, refQ, xlim = c(0, 8), ylim = c(0, 8),
+                    plot(labelQ, refQ, xlim = c(0, 8), ylim = c(0, 8),
                                    pch = 19, bty = "n", xaxt = "n", yaxt = "n",
                                    xlab = "", ylab = "", main = "")
-                    graphics::lines(c(-0.5, 8), c(-0.5, 8), col="#999999")
+                    lines(c(-0.5, 8), c(-0.5, 8), col="#999999")
                     x <- seq(-0.5, 8, 0.1)
-                    graphics::lines(x,
+                    lines(x,
                                     splines[[label]][[channel]](x),
                                     col = "#b30000")
                 }
@@ -409,7 +418,7 @@ QuantileNorm.train <- function(files,
             for(channel in channels){
                 splines[[label]][[channel]] <- identityFunction
                 if(plot){
-                    graphics::plot(c(0,8), c(0,8), col = "#999999", type = "l",
+                    plot(c(0,8), c(0,8), col = "#999999", type = "l",
                                    xlim = c(0,8), ylim = c(0,8),
                                    pch = 19, bty = "n", xaxt = "n", yaxt = "n",
                                    xlab = "", ylab = "", main = "")
@@ -443,6 +452,8 @@ QuantileNorm.train <- function(files,
 #' @param removeOriginal Should the original fcs be removed? Default = FALSE.
 #' @param verbose     If TRUE, progress updates are printed. Default = FALSE.
 #' @param ...         Additional arguments to pass to read.FCS
+#' 
+#' @importFrom flowCore read.FCS transform exprs write.FCS
 #'
 #' @return Nothing is returned, but the new FCS files are written to the output
 #'         directory
@@ -520,34 +531,34 @@ QuantileNorm.normalize <- function(model,
 
             if(label %in% names(model$splines)){
                 # Read the file
-                ff <- flowCore::read.FCS(file,...)
+                ff <- read.FCS(file,...)
 
                 # Transform if necessary
                 if(!is.null(transformList)){
                     #description_original <- ff@description
                     #parameters_original <- ff@parameters
-                    ff <- flowCore::transform(ff, transformList)
+                    ff <- transform(ff, transformList)
                 }
 
                 # Overwrite the values with the normalized values
                 if (verbose) message("Normalizing ",label)
                 for (channel in channels) {
-                    flowCore::exprs(ff)[, channel] <-
+                    exprs(ff)[, channel] <-
                         model$splines[[label]][[channel]](
-                            flowCore::exprs(ff[, channel]))
-                    infinities <- is.infinite(flowCore::exprs(ff)[, channel])
+                            exprs(ff[, channel]))
+                    infinities <- is.infinite(exprs(ff)[, channel])
                     if(any(infinities)){
                         warning(paste0(label, " ", channel,
                                        ": Replacing ", sum(infinities),
                                        " infinity values by max value."))
-                        flowCore::exprs(ff)[infinities, channel] <-
-                            sign(flowCore::exprs(ff)[infinities, channel]) *
-                            max(abs(flowCore::exprs(ff)[-infinities, channel]))
+                        exprs(ff)[infinities, channel] <-
+                            sign(exprs(ff)[infinities, channel]) *
+                            max(abs(exprs(ff)[-infinities, channel]))
                     }
                 }
 
                 if (!is.null(transformList.reverse)) {
-                    ff <- flowCore::transform(ff, transformList.reverse)
+                    ff <- transform(ff, transformList.reverse)
                 } else if (!is.null(transformList)) {
                     warning("Please provide a reverse transformation list if
                             you want the files to be saved in the original
@@ -558,7 +569,7 @@ QuantileNorm.normalize <- function(model,
                     file.remove(file)
                 }
 
-                suppressWarnings(flowCore::write.FCS(ff,
+                suppressWarnings(write.FCS(ff,
                                                      filename = file.path(outputDir,
                                                                           paste0(prefix,
                                                                                  gsub(".*/","",file)))))

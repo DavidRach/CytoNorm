@@ -1,4 +1,4 @@
-Package: CytoNorm
+Package: CytoNorm2
 Type: Package
 Title: Normalisation of cytometry data measured across multiple batches
 Version: 2.0.12
@@ -23,15 +23,20 @@ Imports:
     ggplot2 (>= 3.5.1),
     ggpubr,
     methods,
+    graphics,
     gridExtra,
     ggridges,
+    stats,
     tidyr
 Suggests:
     BiocStyle,
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0),
+    withr
 License: GPL (>= 2)
 LazyData: TRUE
 RoxygenNote: 7.3.3
 Encoding: UTF-8
+Config/testthat/edition: 3
 VignetteBuilder: knitr

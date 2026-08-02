@@ -3,8 +3,10 @@
 #' Arcsinh transformation with cofactor 5
 #'
 #' @param x Value to transform
+#' 
+#' @importFrom flowCore arcsinhTransform
 #' @export
-cytofTransform <- flowCore::arcsinhTransform(transformationId="cytofTransform",
+cytofTransform <- arcsinhTransform(transformationId="cytofTransform",
                                              a=0, b=(1/5), c=0)
 
 #' cytofTransform.reverse
@@ -35,14 +37,16 @@ named.list <- function(...) {
 #' Creates an empty plot with a label in it
 #'
 #' @param text Text to show in the plot
+#' 
+#' @importFrom graphics plot text
 #' @export
 textPlot <- function(text){
-    graphics::plot(0,
+    plot(0,
                    xlim = c(-1,1), ylim = c(-1,1),
                    type = "n",
                    xaxt = "n", yaxt = "n",
                    bty = "n", xlab = "", ylab = "")
-    graphics::text(0, 0, text, adj = 0.5)
+    text(0, 0, text, adj = 0.5)
 }
 
 #' identityFunction

@@ -42,6 +42,16 @@
 #'                    \code{NULL}, the output will be a list of ggplots 
 #' @param ...         Arguments for read.FCS (e.g. truncate_max_range)
 #' 
+#' @importFrom methods is
+#' @importFrom flowCore fsApply exprs read.FCS
+#' @importFrom FlowSOM GetMarkers GetChannels AggregateFlowFrames
+#' @importFrom dplyr tibble group_by summarise
+#' @importFrom ggplot2 ggplot aes geom_jitter position_jitter theme
+#' theme_classic element_blank element_text ylab guides guide_legend
+#' scale_color_manual ylim geom_point
+#' @importFrom ggpubr annotate_figure ggarrange text_grob
+#' @importFrom stats quantile
+#' 
 #' @return List of ggplot objects if \code{plot} is \code{FALSE}, 
 #'         otherwise \code{filePlot} with plot is created.
 #'         
@@ -65,13 +75,6 @@
 #'                               "PE-Cy7-A"), 
 #'                  maxPoints = 1000)
 #' 
-#' @import ggplot2
-#' @importFrom methods is
-#' @importFrom flowCore fsApply exprs
-#' @importFrom dplyr tibble group_by summarise
-#' @importFrom ggpubr annotate_figure ggarrange text_grob
-#' @importFrom stats quantile
-#'  
 #' @export 
 plotFileScatters <- function(input, 
                              fileID = "File",
@@ -103,10 +106,10 @@ plotFileScatters <- function(input,
   
   #---Read in data---
   if (is(input, "flowSet")) {
-    data <- flowCore::fsApply(input, function(ff) {
-      flowCore::exprs(ff)
+    data <- fsApply(input, function(ff) {
+      exprs(ff)
     })
-    cell_counts <- flowCore::fsApply(input, function(ff) {
+    cell_counts <- fsApply(input, function(ff) {
       nrow(ff)
     })
     file_values <- unlist(sapply(seq_len(length(cell_counts)), 
@@ -116,13 +119,13 @@ plotFileScatters <- function(input,
     ff <- input[[1]]
   } else if (is(input, "flowFrame")) {
     ff <- input
-    data <- flowCore::exprs(ff)
+    data <- exprs(ff)
     data <- data[,c(channels, fileID)]
     file_values <- data[, fileID]
     input <- unique(file_values)
   } else {
-    channels <- FlowSOM::GetChannels(read.FCS(input[1], ...), channels)
-    ff <- FlowSOM::AggregateFlowFrames(input,
+    channels <- GetChannels(read.FCS(input[1], ...), channels)
+    ff <- AggregateFlowFrames(input,
                                        cTotal = maxPoints, 
                                        channels = channels,
                                        silent = silent,
@@ -172,11 +175,11 @@ plotFileScatters <- function(input,
   }
   for (channel in channels) {
     if ("marker" %in% yLabel && length(yLabel) == 1) {
-      yLabs <- FlowSOM::GetMarkers(ff, channel)
+      yLabs <- GetMarkers(ff, channel)
     } else if ("channel" %in% yLabel && length(yLabel) == 1){
       yLabs <- channel
     } else if (all(c("channel", "marker") %in% yLabel) && length(yLabel) == 2){
-      yLabs <- paste0(FlowSOM::GetMarkers(ff, channel), " (", channel, ")")
+      yLabs <- paste0(GetMarkers(ff, channel), " (", channel, ")")
     }
     
     
@@ -185,39 +188,39 @@ plotFileScatters <- function(input,
                                       levels = unique(names)),
                      "group" = factor(groups[file_values], 
                                       levels = unique(groups)))
-    p <- ggplot2::ggplot(df, ggplot2::aes(.data$names, .data$intensity)) +
-      ggplot2::geom_jitter(position = position_jitter(width = 0.1), alpha = 0.5, 
-                           ggplot2::aes(colour = .data$group), shape = ".") +
-      ggplot2::ylab(yLabs) +
-      ggplot2::theme_classic() +
-      ggplot2::theme(axis.title.x = ggplot2::element_blank()) +
-      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90,
+    p <- ggplot(df, aes(.data$names, .data$intensity)) +
+      geom_jitter(position = position_jitter(width = 0.1), alpha = 0.5, 
+                           aes(colour = .data$group), shape = ".") +
+      ylab(yLabs) +
+      theme_classic() +
+      theme(axis.title.x = element_blank()) +
+      theme(axis.text.x = element_text(angle = 90,
                                                          vjust = 0.5,
                                                          hjust = 0.95)) +
-      ggplot2::guides(colour = ggplot2::guide_legend(
+      guides(colour = guide_legend(
         override.aes = list(size = 5, shape = 15, alpha = 1)))
     if (!is.null(color)) { # if manual colors are provided
-      p <- p + ggplot2::scale_color_manual(values = color)
+      p <- p + scale_color_manual(values = color)
     }
     
     if (!is.null(yLim)) { # if y margins are provided
-      p <- p + ggplot2::ylim(yLim)
+      p <- p + ylim(yLim)
     }
     
     if (!legend) { # if you don't want a legend on the plot
-      p <- p + ggplot2::theme(legend.position = "none")
+      p <- p + theme(legend.position = "none")
     }
     
     if(!is.null(quantiles)){
       my_quantile <- function(x, quantiles) {
-        dplyr::tibble(intensity = stats::quantile(x, quantiles), 
+        tibble(intensity = quantile(x, quantiles), 
                       quantile = quantiles)
       }
       
       quantile_intensities <- df %>%
-        dplyr::group_by(names) %>% 
-        dplyr::summarise(my_quantile(.data$intensity, quantiles))
-      p <- p + ggplot2::geom_point(ggplot2::aes(x = .data$names, 
+        group_by(names) %>% 
+        summarise(my_quantile(.data$intensity, quantiles))
+      p <- p + geom_point(aes(x = .data$names, 
                                                 y = .data$intensity), 
                                    col = "black", 
                                    shape = 3, #95,
@@ -249,10 +252,10 @@ plotFileScatters <- function(input,
     png(plotFile,
         width = width, 
         height = height)
-    p <- ggpubr::annotate_figure(ggpubr::ggarrange(plotlist = plots_list,
+    p <- annotate_figure(ggarrange(plotlist = plots_list,
                                                    common.legend = legend, 
                                                    ncol = ncol, nrow = nrow),
-                                 bottom = ggpubr::text_grob("Files"))
+                                 bottom = text_grob("Files"))
     print(p)  
     dev.off()
   } else {

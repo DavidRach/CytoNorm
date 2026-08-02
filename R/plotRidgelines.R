@@ -88,7 +88,7 @@
 #' @importFrom stats quantile
 #' @importFrom ggplot2 ggplot aes scale_fill_manual ggplot_build geom_path
 #'                     geom_point xlab
-#'                     theme_minimal theme_minimal
+#'                     theme_minimal
 
 #' @export
 #' 
@@ -100,17 +100,17 @@ plotRidgelines <- function(input,
                            quantiles = c(seq(0,1,0.1))){
   
   
-  data <- FlowSOM::AggregateFlowFrames(fileNames = input,
+  data <- AggregateFlowFrames(fileNames = input,
                                        cTotal = length(input)*10000)
   if(!is.null(transformList)){
-    data <- flowCore::transform(data, transformList)
+    data <- transform(data, transformList)
   }
   
-  df <- data.frame(flowCore::exprs(data)[,c(channels, "File")], check.names = FALSE)
+  df <- data.frame(exprs(data)[,c(channels, "File")], check.names = FALSE)
   df$FileName <- sub("(?i).*/(.*).fcs", "\\1", input)[df$File]
   df$Batch <- batch[df$File]
   
-  df_l <- data.frame(tidyr::pivot_longer(df, 
+  df_l <- data.frame(pivot_longer(df, 
                                          cols = -c("File", "FileName", "Batch"), 
                                          names_to = "Channel", 
                                          values_to = "Intensity"),
@@ -126,16 +126,16 @@ plotRidgelines <- function(input,
       fileQuantiles[filename,1:length(quantiles)] <- quantile(df[df$FileName == filename, channel], quantiles)
     }
     fileQuantiles[,"File"] <- 1:nrow(fileQuantiles)
-    fileQuantiles_l <- data.frame(tidyr::pivot_longer(data.frame(fileQuantiles), 
+    fileQuantiles_l <- data.frame(pivot_longer(data.frame(fileQuantiles), 
                                                       cols = colnames(fileQuantiles)[startsWith(colnames(fileQuantiles), "q")], 
                                                       names_to = "Quantile", values_to = "x"))
     fileQuantiles_l$y <- NA
     
-    p <- ggplot2::ggplot(df_l[df_l$Channel == channel,], ggplot2::aes(x = Intensity, y = FileName, fill = Batch)) +
-      ggridges::geom_density_ridges() +
-      ggplot2::scale_fill_manual(values = colors) +
-      ggridges::theme_ridges() 
-    p_build <- ggplot2::ggplot_build(p)$data[[1]] # Get plot coordinates
+    p <- ggplot(df_l[df_l$Channel == channel,], aes(x = Intensity, y = FileName, fill = Batch)) +
+      geom_density_ridges() +
+     scale_fill_manual(values = colors) +
+      theme_ridges() 
+    p_build <- ggplot_build(p)$data[[1]] # Get plot coordinates
     for(row in 1:nrow(fileQuantiles_l)){
       file <- fileQuantiles_l$File[row]
       p_build_sub <- p_build[p_build$y == file,]
@@ -145,17 +145,17 @@ plotRidgelines <- function(input,
     }
     fileQuantiles_l[,"FileName"] <- sub("(?i).*/(.*).fcs", "\\1", input)[fileQuantiles_l[,"File"]]
     fileQuantiles_l$Quantile <- as.factor(fileQuantiles_l$Quantile)
-    fileQuantiles_l <- dplyr::arrange(fileQuantiles_l, Quantile, y)
+    fileQuantiles_l <- arrange(fileQuantiles_l, Quantile, y)
     
-    plotlist[[channel]] <- ggplot2::ggplot(df_l[df_l$Channel == channel,], ggplot2::aes(x = Intensity, y = FileName)) +
-      ggridges::geom_density_ridges(ggplot2::aes(fill = Batch)) +
-      ggplot2::scale_fill_manual(values = colors) +
-      ggplot2::geom_path(data = fileQuantiles_l, 
+    plotlist[[channel]] <- ggplot(df_l[df_l$Channel == channel,], aes(x = Intensity, y = FileName)) +
+      geom_density_ridges(aes(fill = Batch)) +
+      scale_fill_manual(values = colors) +
+      geom_path(data = fileQuantiles_l, 
                          position = "identity",
-                         ggplot2::aes(x=x, y=y, group = Quantile, color = Quantile)) +
-      ggplot2::geom_point(data = fileQuantiles_l,
-                          ggplot2::aes(x = x, y = y, color = Quantile)) +
-      ggplot2::theme_minimal()
+                          aes(x=x, y=y, group = Quantile, color = Quantile)) +
+      geom_point(data = fileQuantiles_l,
+                          aes(x = x, y = y, color = Quantile)) +
+      theme_minimal()
     
   }
   return(plotlist)

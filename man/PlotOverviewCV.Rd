@@ -13,7 +13,14 @@ PlotOverviewCV(fsom, cv_res, max_cv = 2.5, show_cv = 1.5)
 
 \item{max_cv}{All values higher than this value will get the same color}
 
-\item{show_cv}{All values higher than this one will be shown numerically
+\item{show_cv}{All values higher than this one will be shown numerically}
+
+\item{gridExtra}{grid.arrange}
+}
+\description{
+Plot overview of CV values for a flowSOM model
+}
+\examples{
 
 dir <- system.file("extdata", package = "CytoNorm")
 files <- list.files(dir, pattern = "fcs$")
@@ -43,8 +50,5 @@ fsom <- prepareFlowSOM(train_data$Path,
 cvs <- testCV(fsom,
               cluster_values = c(5,15,25,35,45)) # 3:50
 
-PlotOverviewCV(fsom, cvs)}
-}
-\description{
-Plot overview of CV values for a flowSOM model
+PlotOverviewCV(fsom, cvs)
 }
